@@ -168,7 +168,12 @@ class FullRankGMM(torch.nn.Module):
         # [batch_size, num_components, len(keep_idx), 1]
         mus_cond = mus_cond.squeeze(-1)  # [batch_size, num_components, len(keep_idx)]
         covs_cond = covs_keep - covs_keep_cond @ covs_cond_inv @ covs_keep_cond.mT
-        comp = D.MultivariateNormal(mus_cond, covariance_matrix=covs_cond)
+        ep = 1.e-5
+        while (torch.linalg.eigvals(covs_cond+ep).real <= 0).sum() == 0:
+            ep += ep
+        if ep > 5.e-4:
+            raise Exception("Buffer added to Covariance Matrix is significantly large")    
+        comp = D.MultivariateNormal(mus_cond, covariance_matrix=covs_cond+ep)
 
         # Define new pis
         mix = D.Categorical(logits=formatted['pis'])
